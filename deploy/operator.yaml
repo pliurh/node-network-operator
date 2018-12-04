@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-network-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: node-network-operator
+  template:
+    metadata:
+      labels:
+        name: node-network-operator
+    spec:
+      serviceAccountName: node-network-operator
+      containers:
+        - name: node-network-operator
+          # Replace this with the built image name
+          image: REPLACE_IMAGE
+          ports:
+          - containerPort: 60000
+            name: metrics
+          command:
+          - node-network-operator
+          imagePullPolicy: Always
+          readinessProbe:
+            exec:
+              command:
+                - stat
+                - /tmp/operator-sdk-ready
+            initialDelaySeconds: 4
+            periodSeconds: 10
+            failureThreshold: 1
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "node-network-operator"

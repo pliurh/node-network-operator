@@ -20,6 +20,47 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
+  branch = "go15"
+  name = "github.com/ajeddeloh/go-json"
+  packages = ["."]
+  revision = "6a2fe990e08303c82d966297ddb29a58678a4783"
+
+[[projects]]
+  name = "github.com/coreos/go-semver"
+  packages = ["semver"]
+  revision = "8ab6407b697782a06568d4b7f1db25550ec2e4c6"
+  version = "v0.2.0"
+
+[[projects]]
+  name = "github.com/coreos/go-systemd"
+  packages = ["unit"]
+  revision = "9002847aa1425fb6ac49077c0a630b3b67e0fbfd"
+  version = "v18"
+
+[[projects]]
+  name = "github.com/coreos/ignition"
+  packages = [
+    "config/shared/errors",
+    "config/shared/validations",
+    "config/util",
+    "config/v1",
+    "config/v1/types",
+    "config/v2_0",
+    "config/v2_0/types",
+    "config/v2_1",
+    "config/v2_1/types",
+    "config/v2_2",
+    "config/v2_2/types",
+    "config/v2_3_experimental/types",
+    "config/validate",
+    "config/validate/astjson",
+    "config/validate/astnode",
+    "config/validate/report"
+  ]
+  revision = "76107251acd117c6d3e5b4dae2b47f82f944984b"
+  version = "v0.26.0"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
@@ -196,6 +237,15 @@
   version = "1.0.1"
 
 [[projects]]
+  name = "github.com/openshift/machine-config-operator"
+  packages = [
+    "pkg/apis",
+    "pkg/apis/machineconfiguration.openshift.io/v1"
+  ]
+  revision = "7efcbbbcada2af39a505c7a0305c7b32acec0af3"
+  version = "v3.11.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/operator-framework/operator-sdk"
   packages = [
@@ -231,6 +281,12 @@
   version = "v1.0.3"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/vincent-petithory/dataurl"
+  packages = ["."]
+  revision = "9a301d65acbb728fcc3ace14f45f511a4cfeea9c"
+
+[[projects]]
   name = "go.uber.org/atomic"
   packages = ["."]
   revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
@@ -254,6 +310,12 @@
   ]
   revision = "ff33455a0e382e8a81d14dd7c922020b6b5e7982"
   version = "v1.9.1"
+
+[[projects]]
+  branch = "master"
+  name = "go4.org"
+  packages = ["errorutil"]
+  revision = "00e24f1b25994999399dee600cb8f35a45f519dc"
 
 [[projects]]
   branch = "master"
@@ -513,7 +575,8 @@
     "util/homedir",
     "util/integer",
     "util/jsonpath",
-    "util/retry"
+    "util/retry",
+    "util/workqueue"
   ]
   revision = "1f13a808da65775f22cbf47862c4e5898d8f4ca1"
 
@@ -589,14 +652,24 @@
     "pkg/client",
     "pkg/client/apiutil",
     "pkg/client/config",
+    "pkg/controller",
+    "pkg/controller/controllerutil",
+    "pkg/event",
+    "pkg/handler",
+    "pkg/internal/controller",
     "pkg/internal/recorder",
     "pkg/leaderelection",
     "pkg/manager",
     "pkg/patch",
+    "pkg/predicate",
+    "pkg/reconcile",
     "pkg/recorder",
     "pkg/runtime/inject",
     "pkg/runtime/log",
+    "pkg/runtime/scheme",
     "pkg/runtime/signals",
+    "pkg/source",
+    "pkg/source/internal",
     "pkg/webhook/admission",
     "pkg/webhook/admission/types",
     "pkg/webhook/types"
@@ -607,6 +680,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fac99b538e6645002dda94875ce4b76df6186c30787e5958a649aad0dd409ffa"
+  inputs-digest = "4cca4b5087a75ea95f3d9e3286a3747ab020128f819f440a902059c8ef9be53e"
   solver-name = "gps-cdcl"
   solver-version = 1

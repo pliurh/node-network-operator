@@ -1,6 +1,7 @@
-kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
 metadata:
+  creationTimestamp: null
   name: node-network-operator
 rules:
 - apiGroups:
@@ -14,7 +15,7 @@ rules:
   - configmaps
   - secrets
   verbs:
-  - "*"
+  - '*'
 - apiGroups:
   - ""
   resources:
@@ -29,11 +30,24 @@ rules:
   - replicasets
   - statefulsets
   verbs:
-  - "*"
+  - '*'
 - apiGroups:
   - monitoring.coreos.com
   resources:
   - servicemonitors
   verbs:
-  - "get"
-  - "create"
+  - get
+  - create
+- apiGroups:
+  - k8s.cni.cncf.io
+  resources:
+  - '*'
+  - nodenetworkconfigurationpolicies
+  verbs:
+  - '*'
+- apiGroups: 
+  - machineconfiguration.openshift.io
+  resources:
+  - machineconfigs
+  verbs:
+  - '*'

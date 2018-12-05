@@ -1,0 +1,10 @@
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: NodeNetworkConfigurationPolicy
+metadata:
+  name: policy
+spec:
+  priority: 99
+  desiredState:
+    interfaces: 
+    - name: eth0
+      numVfs: 2

@@ -4,6 +4,8 @@ metadata:
   name: policy
 spec:
   priority: 99
+  nodeSelector:
+    kubernetes.io/hostname: minikube
   desiredState:
     interfaces: 
     - name: eth0

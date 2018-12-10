@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"github.com/google/go-cmp/cmp"
 	"github.com/vincent-petithory/dataurl"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -58,12 +59,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner NodeNetworkState
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &k8sv1alpha1.NodeNetworkState{},
-	})
+	// Watch for changes to Node
+	err = c.Watch(&source.Kind{Type: &corev1.Node{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -106,14 +103,18 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, err
 	}
 
-	// Define a new MachineConfig object if node is managed.
+	// Check if the node is managed
 	if !instance.Spec.Managed {
 		reqLogger.Info("Node", instance.Name, "is not configured to be managed by operator")
 		return reconcile.Result{}, nil
 	}
 
-	machineConfig := newMachineConfig(instance)
+	// Check if the desired state equals to operational state
+	if cmp.Equal(instance.Status.DesiredState.Interfaces,instance.Status.OperationalState.Interfaces) {
+		return reconcile.Result{}, nil
+	}
 
+	machineConfig := newMachineConfig(instance)
 	// Set NodeNetworkState instance as the owner and controller
 	if err := controllerutil.SetControllerReference(instance, machineConfig, r.scheme); err != nil {
 		return reconcile.Result{}, err
@@ -124,24 +125,47 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: machineConfig.Name, Namespace: ""}, found)
 	if err != nil && errors.IsNotFound(err) {
 		reqLogger.Info("Creating a new machineConfig", "name", machineConfig.Name)
+		// Create MachineConfig if not exist
 		err = r.client.Create(context.TODO(), machineConfig)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		// Pod created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
 		reqLogger.Info("Error when finding machineConfig ")
 		return reconcile.Result{}, err
 	}
 
+	// TODO: check if the MachineConfig need to be updated.
 	// MachineConfig already exists, update it
 	reqLogger.Info("Update MachineConfig", "name", found.Name)
 	found.Spec.Config = machineConfig.Spec.Config
 	err = r.client.Update(context.TODO(), found)
 	if err != nil {
 		return reconcile.Result{}, err
-	}	
+	}
+
+	node := &corev1.Node{}
+	err = r.client.Get(context.TODO(), request.NamespacedName, node)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+	if node.Annotations["machine-config-daemon.v1.openshift.com/state"] == "done" {
+		instance.Status.OperationalState.NodeCfgNetworkState = *instance.Status.DesiredState.DeepCopy()
+		reqLogger.Info("Update operational state", "interfaces", instance.Status.OperationalState.NodeCfgNetworkState.Interfaces)
+		err = r.client.Status().Update(context.TODO(), instance)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
 	return reconcile.Result{}, nil
 }
 
@@ -215,4 +239,3 @@ func generateNetConfigFileContent(nns *k8sv1alpha1.NodeNetworkState) (string, er
 	
 	return content.String(), nil
 }
-

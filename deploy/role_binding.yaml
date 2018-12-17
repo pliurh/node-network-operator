@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: node-network-operator
-  namespace: default
+  namespace: node-network-operator
 roleRef:
   kind: ClusterRole
   name: node-network-operator

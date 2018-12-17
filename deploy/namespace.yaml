@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: node-network-operator
+  labels:
+    name: node-network-operator
+    openshift.io/run-level: "0"

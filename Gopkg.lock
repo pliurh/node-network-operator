@@ -817,6 +817,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/coreos/ignition/config/v2_2/types",
+    "github.com/ghodss/yaml",
     "github.com/google/go-cmp/cmp",
     "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1",
     "github.com/operator-framework/operator-sdk/pkg/k8sutil",

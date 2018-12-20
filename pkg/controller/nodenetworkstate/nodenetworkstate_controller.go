@@ -19,7 +19,6 @@ import (
 	"github.com/vincent-petithory/dataurl"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -114,9 +113,8 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, nil
 	}
 
-	machineConfig := newMachineConfig(instance)
-	// Set NodeNetworkState instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, machineConfig, r.scheme); err != nil {
+	machineConfig, err:= newMachineConfig(instance)
+	if err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -136,15 +134,26 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, err
 	}
 
-	// TODO: check if the MachineConfig need to be updated.
-	// MachineConfig already exists, update it
-	reqLogger.Info("Update MachineConfig", "name", found.Name)
-	found.Spec.Config = machineConfig.Spec.Config
-	err = r.client.Update(context.TODO(), found)
+	// MachineConfig already exists, try to update it
+	foundHash, err :=  getMachineConfigHash(&found.Spec)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	hash, err := getMachineConfigHash(&machineConfig.Spec)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if foundHash != hash {
+		reqLogger.Info("Update MachineConfig", "name", found.Name)
+		found.Spec.Config = machineConfig.Spec.Config
+		err = r.client.Update(context.TODO(), found)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
 
+	reqLogger.Info("Update network node operational state")
 	node := &corev1.Node{}
 	err = r.client.Get(context.TODO(), request.NamespacedName, node)
 	if err != nil {
@@ -157,7 +166,7 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	if node.Annotations["machine-config-daemon.v1.openshift.com/state"] == "done" {
+	if node.Annotations["machineconfiguration.openshift.io/state"] == "Done" {
 		instance.Status.OperationalState.NodeCfgNetworkState = *instance.Status.DesiredState.DeepCopy()
 		reqLogger.Info("Update operational state", "interfaces", instance.Status.OperationalState.NodeCfgNetworkState.Interfaces)
 		err = r.client.Status().Update(context.TODO(), instance)
@@ -169,24 +178,24 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 	return reconcile.Result{}, nil
 }
 
-func newMachineConfig(nns *k8sv1alpha1.NodeNetworkState) *mcfgv1.MachineConfig{
+func newMachineConfig(nns *k8sv1alpha1.NodeNetworkState) (*mcfgv1.MachineConfig, error){
 	labels := map[string]string{
 		"machineconfiguration.openshift.io/role": "worker",
 	}
 	config, err := generateIgnConfig(nns)
 	if err != nil {
-		return nil
+		return nil,err
 	} 
 
 	return &mcfgv1.MachineConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "nodenetconf", 
+			Name: "nodenetconf",
 			Labels: labels,
 		},
 		Spec: mcfgv1.MachineConfigSpec{
 			Config: *config,
 		},
-	}
+	}, nil
 }
 
 func generateIgnConfig(nns *k8sv1alpha1.NodeNetworkState) (*ignv2_2types.Config, error) {

@@ -106,14 +106,13 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	if len(instance.ObjectMeta.Labels) > 1 {
-		return reconcile.Result{}, fmt.Errorf("More than one label is specified, %v", instance.ObjectMeta.Labels)
-	}
+	k8sv1alpha1.ValidateNodeNetworkConfigurationPolicy(instance)
 
 	b := new(bytes.Buffer)
-    for key, value := range instance.ObjectMeta.Labels {
-        fmt.Fprintf(b, "%s=\"%s\"\n", key, value)
+    for key, value := range instance.Labels {
+        fmt.Fprintf(b, "%s=%s", key, value)
     }
+	reqLogger.Info("Instance","Labels", b.String())
 
 	// Fetch the NodeNetworkConfigurationPolicy instances with the same label.
 	policies := &k8sv1alpha1.NodeNetworkConfigurationPolicyList{}
@@ -248,7 +247,7 @@ func renderMachineConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*mcfgv
 
 	return &mcfgv1.MachineConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "nodenetconf",
+			Name: cr.Name,
 			Labels: cr.ObjectMeta.Labels,
 		},
 		Spec: mcfgv1.MachineConfigSpec{
@@ -296,11 +295,10 @@ func generateNetConfigFileContent(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy
 	var content strings.Builder
 	var i k8sv1alpha1.Interface
 
-	fmt.Fprintf(&content, "[devices]\n")
-
 	for _, i = range cr.Spec.DesiredState.Interfaces {
 		if i.NumVfs > 0 {
-			fmt.Fprintf(&content, "match-device=interface-name:%v\nsriov-num-vfs=%v\n", i.Name, i.NumVfs)
+			fmt.Fprintf(&content, "[devices-%s]\n", i.Name)
+			fmt.Fprintf(&content, "match-device=interface-name:%v\nsriov-num-vfs=%v\n\n", i.Name, i.NumVfs)
 		}
 	}
 

@@ -175,54 +175,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	listOpts = &client.ListOptions{}
-	nodes := &corev1.NodeList{}
-	err = r.client.List(context.TODO(), listOpts, nodes)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
-	}
-
-	for _, node := range nodes.Items {
-		nodeNetCfg := &k8sv1alpha1.NodeNetworkState{}
-		err = r.client.Get(context.TODO(), types.NamespacedName{Name: node.Name, Namespace: ""}, nodeNetCfg)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				// Request object not found, could have been deleted after reconcile request.
-				// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-				// Return and don't requeue
-				reqLogger.Info("NodeNetworkState is not found", "node", node.Name)
-				newNodeNetCfg := newNodeNetworkState(&node)
-				
-				reqLogger.Info("Create NodeNetworkState for", "node", node.Name)
-				err = r.client.Create(context.TODO(), newNodeNetCfg)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
-			} else {
-				// Error reading the object - requeue the request.
-				return reconcile.Result{}, err
-			}
-		}
-		
-		// update node network desired config
-		err = r.client.Get(context.TODO(), types.NamespacedName{Name: node.Name, Namespace: ""}, nodeNetCfg)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		reqLogger.Info("Update node network config", "desired state", policy.Spec.DesiredState)
-		err = r.client.Status().Update(context.TODO(), updateNodeNetworkState(nodeNetCfg, policy))
-		if err != nil {
-			// Error reading the object - requeue the request.
-			return reconcile.Result{}, err	
-		}
-	}
+	err = r.updateNodeNetworkState(policy)
 	return reconcile.Result{}, nil
 }
 
@@ -237,11 +190,53 @@ func newNodeNetworkState(node *corev1.Node)*k8sv1alpha1.NodeNetworkState{
 	}
 }
 
-func updateNodeNetworkState(cfg *k8sv1alpha1.NodeNetworkState, cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) *k8sv1alpha1.NodeNetworkState{
-	// create desired config for node 
-	configState := cr.Spec.DesiredState.DeepCopy()
-	cfg.Status.DesiredState = *configState
-	return cfg
+func (r *ReconcileNodeNetworkConfigurationPolicy)updateNodeNetworkState(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) error{
+	listOpts := &client.ListOptions{}
+	nodes := &corev1.NodeList{}
+	err := r.client.List(context.TODO(), listOpts, nodes)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return nil
+		}
+		// Error reading the object - requeue the request.
+		return err
+	}
+
+	for _, node := range nodes.Items {
+		cfg := &k8sv1alpha1.NodeNetworkState{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: node.Name, Namespace: ""}, cfg)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				// Request object not found, create it
+				log.Info("NodeNetworkState is not found, create it", "node", node.Name)
+				cfg := newNodeNetworkState(&node)
+				err = r.client.Create(context.TODO(), cfg)
+				if err != nil {
+					return err
+				}
+			} else {
+				// Error reading the object - requeue the request.
+				return err
+			}
+		}
+		
+		// update node network desired config
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: node.Name, Namespace: ""}, cfg)
+		if err != nil {
+			return err
+		}
+		log.Info("Update node network config", "desired state", cr.Spec.DesiredState)
+		cfg.Status.DesiredState = *cr.Spec.DesiredState.DeepCopy()
+		err = r.client.Status().Update(context.TODO(), cfg)
+		if err != nil {
+			// Error reading the object - requeue the request.
+			return err
+		}
+	}
+	return nil
 }
 
 // Render MachineConfig based on policies

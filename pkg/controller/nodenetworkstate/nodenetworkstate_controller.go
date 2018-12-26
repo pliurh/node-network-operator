@@ -7,14 +7,11 @@ import (
 	"strings"
 
 	ignv2_2types "github.com/coreos/ignition/config/v2_2/types"
-	mcfgv1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
 	k8sv1alpha1 "github.com/pliurh/node-network-operator/pkg/apis/k8s/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/vincent-petithory/dataurl"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,11 +55,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to Node
-	err = c.Watch(&source.Kind{Type: &corev1.Node{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
+	// // Watch for changes to Node
+	// err = c.Watch(&source.Kind{Type: &corev1.Node{}}, &handler.EnqueueRequestForObject{})
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -113,46 +110,6 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, nil
 	}
 
-	machineConfig, err:= newMachineConfig(instance)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Check if the MachineConfig already exists. 
-	found := &mcfgv1.MachineConfig{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: machineConfig.Name, Namespace: ""}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new machineConfig", "name", machineConfig.Name)
-		// Create MachineConfig if not exist
-		err = r.client.Create(context.TODO(), machineConfig)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
-	} else if err != nil {
-		reqLogger.Info("Error when finding machineConfig ")
-		return reconcile.Result{}, err
-	}
-
-	// MachineConfig already exists, try to update it
-	foundHash, err :=  getMachineConfigHash(&found.Spec)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	hash, err := getMachineConfigHash(&machineConfig.Spec)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	if foundHash != hash {
-		reqLogger.Info("Update MachineConfig", "name", found.Name)
-		found.Spec.Config = machineConfig.Spec.Config
-		err = r.client.Update(context.TODO(), found)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
-	}
-
 	reqLogger.Info("Update network node operational state")
 	node := &corev1.Node{}
 	err = r.client.Get(context.TODO(), request.NamespacedName, node)
@@ -176,26 +133,6 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func newMachineConfig(nns *k8sv1alpha1.NodeNetworkState) (*mcfgv1.MachineConfig, error){
-	labels := map[string]string{
-		"machineconfiguration.openshift.io/role": "worker",
-	}
-	config, err := generateIgnConfig(nns)
-	if err != nil {
-		return nil,err
-	} 
-
-	return &mcfgv1.MachineConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "nodenetconf",
-			Labels: labels,
-		},
-		Spec: mcfgv1.MachineConfigSpec{
-			Config: *config,
-		},
-	}, nil
 }
 
 func generateIgnConfig(nns *k8sv1alpha1.NodeNetworkState) (*ignv2_2types.Config, error) {

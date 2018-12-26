@@ -17,12 +17,8 @@ type NodeNetworkConfigurationPolicySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	Priority     uint                  `json:"priority"`
-	// Match        []MatchCondition      `json:"match"`
+	// desired state of node network configuration
 	DesiredState NodeCfgNetworkState   `json:"desiredState"`
-
-	// Label selector for Machines.
-	NodeSelector *metav1.LabelSelector `json:"nodeSelector,omitempty"`
-	//TODO: add AutoConfig support
 }
 
 // NodeNetworkConfigurationPolicyStatus defines the observed state of NodeNetworkConfigurationPolicy

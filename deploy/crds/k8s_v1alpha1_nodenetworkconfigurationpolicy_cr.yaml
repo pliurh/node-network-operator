@@ -2,6 +2,8 @@ apiVersion: k8s.cni.cncf.io/v1alpha1
 kind: NodeNetworkConfigurationPolicy
 metadata:
   name: policy
+  labels:
+    machineconfiguration.openshift.io/role: worker
 spec:
   priority: 99
   nodeSelector:

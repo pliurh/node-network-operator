@@ -1,4 +1,4 @@
-package nodenetworkstate
+package nodenetworkconfigurationpolicy
 
 import (
 	"crypto/md5"

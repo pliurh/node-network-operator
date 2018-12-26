@@ -1,9 +1,17 @@
 package nodenetworkconfigurationpolicy
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"net/url"
+	"strings"
 
+	ignv2_2types "github.com/coreos/ignition/config/v2_2/types"
 	k8sv1alpha1 "github.com/pliurh/node-network-operator/pkg/apis/k8s/v1alpha1"
+	mcfgv1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
+
+	"github.com/vincent-petithory/dataurl"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -86,8 +93,8 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 	reqLogger.Info("Reconciling NodeNetworkConfigurationPolicy")
 
 	// Fetch the NodeNetworkConfigurationPolicy instance
-	configPolicy := &k8sv1alpha1.NodeNetworkConfigurationPolicy{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, configPolicy)
+	instance := &k8sv1alpha1.NodeNetworkConfigurationPolicy{}
+	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -99,8 +106,76 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 		return reconcile.Result{}, err
 	}
 
+	if len(instance.ObjectMeta.Labels) > 1 {
+		return reconcile.Result{}, fmt.Errorf("More than one label is specified, %v", instance.ObjectMeta.Labels)
+	}
+
+	b := new(bytes.Buffer)
+    for key, value := range instance.ObjectMeta.Labels {
+        fmt.Fprintf(b, "%s=\"%s\"\n", key, value)
+    }
+
+	// Fetch the NodeNetworkConfigurationPolicy instances with the same label.
+	policies := &k8sv1alpha1.NodeNetworkConfigurationPolicyList{}
 	listOpts := &client.ListOptions{}
-	listOpts.SetLabelSelector(configPolicy.Spec.NodeSelector.String())
+	listOpts.SetLabelSelector(b.String())
+	err = r.client.List(context.TODO(), listOpts, policies)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+	policy := k8sv1alpha1.MergeNodeNetworkConfigurationPolicies(policies)
+
+	// Render MachineConfig based on policies
+	machineConfig, err:= renderMachineConfig(policy)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Check if the MachineConfig already exists.
+	found := &mcfgv1.MachineConfig{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: machineConfig.Name, Namespace: ""}, found)
+	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating a new machineConfig", "name", machineConfig.Name)
+		// Create MachineConfig if not exist
+		err = r.client.Create(context.TODO(), machineConfig)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	} else if err != nil {
+		reqLogger.Info("Error when finding machineConfig ")
+		return reconcile.Result{}, err
+	}
+
+	// MachineConfig already exists, update it if the hash of spec is different
+	foundHash, err := getMachineConfigHash(&found.Spec)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	hash, err := getMachineConfigHash(&machineConfig.Spec)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if foundHash == hash {
+		//No need to update
+		return reconcile.Result{}, nil
+	}
+
+	reqLogger.Info("Update MachineConfig", "name", found.Name)
+	found.Spec.Config = machineConfig.Spec.Config
+	err = r.client.Update(context.TODO(), found)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	listOpts = &client.ListOptions{}
 	nodes := &corev1.NodeList{}
 	err = r.client.List(context.TODO(), listOpts, nodes)
 	if err != nil {
@@ -124,10 +199,6 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 				// Return and don't requeue
 				reqLogger.Info("NodeNetworkState is not found", "node", node.Name)
 				newNodeNetCfg := newNodeNetworkState(&node)
-				// Set  instance as the owner and controller
-				if err := controllerutil.SetControllerReference(configPolicy, newNodeNetCfg, r.scheme); err != nil {
-					return reconcile.Result{}, err
-				}
 				
 				reqLogger.Info("Create NodeNetworkState for", "node", node.Name)
 				err = r.client.Create(context.TODO(), newNodeNetCfg)
@@ -139,15 +210,18 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 				return reconcile.Result{}, err
 			}
 		}
-	
+		
 		// update node network desired config
-		reqLogger.Info("Update node network config desired state")
 		err = r.client.Get(context.TODO(), types.NamespacedName{Name: node.Name, Namespace: ""}, nodeNetCfg)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		reqLogger.Info("Update node network config", "desired state", policy.Spec.DesiredState)
+		err = r.client.Status().Update(context.TODO(), updateNodeNetworkState(nodeNetCfg, policy))
 		if err != nil {
 			// Error reading the object - requeue the request.
 			return reconcile.Result{}, err	
 		}
-		err = r.client.Status().Update(context.TODO(), updateNodeNetworkState(nodeNetCfg, configPolicy))
 	}
 	return reconcile.Result{}, nil
 }
@@ -165,22 +239,76 @@ func newNodeNetworkState(node *corev1.Node)*k8sv1alpha1.NodeNetworkState{
 
 func updateNodeNetworkState(cfg *k8sv1alpha1.NodeNetworkState, cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) *k8sv1alpha1.NodeNetworkState{
 	// create desired config for node 
-	configState := newNodeCfgNetworkState(cr)
+	configState := cr.Spec.DesiredState.DeepCopy()
 	cfg.Status.DesiredState = *configState
 	return cfg
 }
 
-func newNodeCfgNetworkState(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) *k8sv1alpha1.NodeCfgNetworkState {
-	
-	interfaces := []k8sv1alpha1.Interface{
-		{
-			Name: cr.Spec.DesiredState.Interfaces[0].Name,
-			NumVfs: cr.Spec.DesiredState.Interfaces[0].NumVfs,
-		},
+// Render MachineConfig based on policies
+func renderMachineConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*mcfgv1.MachineConfig, error){	
+	config, err := generateIgnConfig(cr)
+	if err != nil {
+		return nil,err
 	}
 
-	return &k8sv1alpha1.NodeCfgNetworkState{
-		Interfaces: interfaces,
-	}
+	return &mcfgv1.MachineConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nodenetconf",
+			Labels: cr.ObjectMeta.Labels,
+		},
+		Spec: mcfgv1.MachineConfigSpec{
+			Config: *config,
+		},
+	}, nil
 }
 
+func generateIgnConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*ignv2_2types.Config, error) {
+
+	fileMode := int(420)
+	contents, err := generateNetConfigFileContent(cr)
+	if err != nil {
+		return nil, err
+	}
+
+	file := ignv2_2types.File{
+		Node: ignv2_2types.Node{
+			Path: "/etc/NetworkManager/conf.d/sriov.conf",
+		},
+		FileEmbedded1: ignv2_2types.FileEmbedded1{
+			Contents: ignv2_2types.FileContents{
+				Source: getEncodedContent(contents),
+			},
+			Mode: &fileMode,
+		},
+	}
+	config := ignv2_2types.Config{
+		Storage: ignv2_2types.Storage{
+			Files: []ignv2_2types.File{},
+		},
+	}
+	config.Storage.Files = append(config.Storage.Files, file)
+	return &config, nil
+}
+
+func getEncodedContent(inp string) string {
+	return (&url.URL{
+		Scheme: "data",
+		Opaque: "," + dataurl.Escape([]byte(inp)),
+	}).String()
+}
+
+func generateNetConfigFileContent(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (string, error) {
+	var content strings.Builder
+	var i k8sv1alpha1.Interface
+
+	fmt.Fprintf(&content, "[devices]\n")
+
+	for _, i = range cr.Spec.DesiredState.Interfaces {
+		if i.NumVfs > 0 {
+			fmt.Fprintf(&content, "match-device=interface-name:%v\nsriov-num-vfs=%v\n", i.Name, i.NumVfs)
+		}
+	}
+
+	log.Info("generateNetConfigFileContent", "file content", content.String())
+	return content.String(), nil
+}

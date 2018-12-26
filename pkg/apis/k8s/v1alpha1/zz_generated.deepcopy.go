@@ -21,7 +21,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -143,11 +142,6 @@ func (in *NodeNetworkConfigurationPolicyList) DeepCopyObject() runtime.Object {
 func (in *NodeNetworkConfigurationPolicySpec) DeepCopyInto(out *NodeNetworkConfigurationPolicySpec) {
 	*out = *in
 	in.DesiredState.DeepCopyInto(&out.DesiredState)
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = new(v1.LabelSelector)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 

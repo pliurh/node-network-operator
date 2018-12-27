@@ -10,7 +10,8 @@ import (
 // Interface defines the state of network interface
 type Interface struct {
 	Name   string    `json:"name"`
-	NumVfs int       `json:"numVfs,omitempty"`
+	NumVfs uint      `json:"numVfs,omitempty"`
+	Mtu    uint      `json:"mtu,omitempty"`
 }
 
 // NodeCfgNetworkState defines the configuration state of node network

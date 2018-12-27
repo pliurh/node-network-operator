@@ -18,7 +18,6 @@ func MergeNodeNetworkConfigurationPolicies(crs *NodeNetworkConfigurationPolicyLi
 	sort.Slice(crs.Items, func(i, j int) bool { return crs.Items[i].Spec.Priority > crs.Items[j].Spec.Priority })
 
 	for _, cr := range crs.Items {
-		log.Info("Policy", "name", cr.Name)
 		for _, i := range cr.Spec.DesiredState.Interfaces {
 			if !contains(interfaces, &i) {
 				interfaces = append(interfaces, *i.DeepCopy())

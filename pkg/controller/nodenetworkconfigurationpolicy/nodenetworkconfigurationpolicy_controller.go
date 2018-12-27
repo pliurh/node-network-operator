@@ -257,30 +257,33 @@ func renderMachineConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*mcfgv
 }
 
 func generateIgnConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*ignv2_2types.Config, error) {
-
-	fileMode := int(420)
-	contents, err := generateNetConfigFileContent(cr)
-	if err != nil {
-		return nil, err
+	features := []string{}
+	for _, iface := range cr.Spec.DesiredState.Interfaces {
+		if iface.NumVfs != 0 {
+			features = append(features, "sriov")
+		}
+		if iface.Mtu != 0 {
+			features = append(features, "mtu")
+		}
 	}
+	log.Info("Enables features", "feature list", features)
 
-	file := ignv2_2types.File{
-		Node: ignv2_2types.Node{
-			Path: "/etc/NetworkManager/conf.d/sriov.conf",
-		},
-		FileEmbedded1: ignv2_2types.FileEmbedded1{
-			Contents: ignv2_2types.FileContents{
-				Source: getEncodedContent(contents),
-			},
-			Mode: &fileMode,
-		},
-	}
 	config := ignv2_2types.Config{
 		Storage: ignv2_2types.Storage{
 			Files: []ignv2_2types.File{},
 		},
 	}
-	config.Storage.Files = append(config.Storage.Files, file)
+
+	for _, f := range features {
+		switch f {
+		case "sriov":
+			file:= generateSriovFile(&cr.Spec.DesiredState)
+			config.Storage.Files = append(config.Storage.Files, file)
+		case "mtu":
+			file:= generateMtuFile(&cr.Spec.DesiredState)
+			config.Storage.Files = append(config.Storage.Files, file)
+		}
+	}
 	return &config, nil
 }
 
@@ -291,17 +294,66 @@ func getEncodedContent(inp string) string {
 	}).String()
 }
 
-func generateNetConfigFileContent(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (string, error) {
+func generateSriovFileContent(state *k8sv1alpha1.NodeCfgNetworkState) (string) {
 	var content strings.Builder
 	var i k8sv1alpha1.Interface
 
-	for _, i = range cr.Spec.DesiredState.Interfaces {
+	for _, i = range state.Interfaces {
 		if i.NumVfs > 0 {
-			fmt.Fprintf(&content, "[devices-%s]\n", i.Name)
+			fmt.Fprintf(&content, "[device-%s]\n", i.Name)
 			fmt.Fprintf(&content, "match-device=interface-name:%v\nsriov-num-vfs=%v\n\n", i.Name, i.NumVfs)
 		}
 	}
 
-	log.Info("generateNetConfigFileContent", "file content", content.String())
-	return content.String(), nil
+	log.Info("Generate sriov file", "file content", content.String())
+	return content.String()
+}
+
+func generateMtuFileContent(state *k8sv1alpha1.NodeCfgNetworkState) (string) {
+	var content strings.Builder
+	var i k8sv1alpha1.Interface
+
+	for _, i = range state.Interfaces {
+		if i.Mtu > 0 {
+			fmt.Fprintf(&content, "[connection-%s]\n", i.Name)
+			fmt.Fprintf(&content, "match-device=interface-name:%v\nethernet.mtu=%v\n\n", i.Name, i.Mtu)
+		}
+	}
+
+	log.Info("Generate mtu file", "file content", content.String())
+	return content.String()
+}
+
+func generateSriovFile(state *k8sv1alpha1.NodeCfgNetworkState) ignv2_2types.File {
+	fileMode := int(420)
+	contents:= generateSriovFileContent(state)
+
+	return ignv2_2types.File{
+		Node: ignv2_2types.Node{
+			Path: "/etc/NetworkManager/conf.d/sriov.conf",
+		},
+		FileEmbedded1: ignv2_2types.FileEmbedded1{
+			Contents: ignv2_2types.FileContents{
+				Source: getEncodedContent(contents),
+			},
+			Mode: &fileMode,
+		},
+	}
+}
+
+func generateMtuFile(state *k8sv1alpha1.NodeCfgNetworkState) ignv2_2types.File {
+	fileMode := int(420)
+	contents:= generateMtuFileContent(state)
+
+	return ignv2_2types.File{
+		Node: ignv2_2types.Node{
+			Path: "/etc/NetworkManager/conf.d/mtu.conf",
+		},
+		FileEmbedded1: ignv2_2types.FileEmbedded1{
+			Contents: ignv2_2types.FileContents{
+				Source: getEncodedContent(contents),
+			},
+			Mode: &fileMode,
+		},
+	}
 }

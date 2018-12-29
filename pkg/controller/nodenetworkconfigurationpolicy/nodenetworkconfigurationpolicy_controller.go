@@ -259,9 +259,8 @@ func renderMachineConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*mcfgv
 func generateIgnConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*ignv2_2types.Config, error) {
 	features := []string{}
 	for _, iface := range cr.Spec.DesiredState.Interfaces {
-		if iface.NumVfs != 0 {
-			features = append(features, "sriov")
-		}
+		features = append(features, "sriov")
+
 		if iface.Mtu != 0 {
 			features = append(features, "mtu")
 		}
@@ -299,7 +298,7 @@ func generateSriovFileContent(state *k8sv1alpha1.NodeCfgNetworkState) (string) {
 	var i k8sv1alpha1.Interface
 
 	for _, i = range state.Interfaces {
-		if i.NumVfs > 0 {
+		if i.NumVfs >= 0 {
 			fmt.Fprintf(&content, "[device-%s]\n", i.Name)
 			fmt.Fprintf(&content, "match-device=interface-name:%v\nsriov-num-vfs=%v\n\n", i.Name, i.NumVfs)
 		}
@@ -315,8 +314,7 @@ func generateMtuFileContent(state *k8sv1alpha1.NodeCfgNetworkState) (string) {
 
 	for _, i = range state.Interfaces {
 		if i.Mtu > 0 {
-			fmt.Fprintf(&content, "[connection-%s]\n", i.Name)
-			fmt.Fprintf(&content, "match-device=interface-name:%v\nethernet.mtu=%v\n\n", i.Name, i.Mtu)
+			fmt.Fprintf(&content, "ACTION==\"add\", SUBSYSTEM==\"net\", KERNEL==\"%s\", RUN+=\"/sbin/ip link set mtu %d dev '%%k'\"\n", i.Name, i.Mtu)
 		}
 	}
 
@@ -347,7 +345,7 @@ func generateMtuFile(state *k8sv1alpha1.NodeCfgNetworkState) ignv2_2types.File {
 
 	return ignv2_2types.File{
 		Node: ignv2_2types.Node{
-			Path: "/etc/NetworkManager/conf.d/mtu.conf",
+			Path: "/etc/udev/rules.d/99-mtu.rules",
 		},
 		FileEmbedded1: ignv2_2types.FileEmbedded1{
 			Contents: ignv2_2types.FileContents{

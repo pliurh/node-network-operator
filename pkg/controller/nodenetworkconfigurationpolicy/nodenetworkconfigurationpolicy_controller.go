@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"regexp"
 
 	ignv2_2types "github.com/coreos/ignition/config/v2_2/types"
 	k8sv1alpha1 "github.com/pliurh/node-network-operator/pkg/apis/k8s/v1alpha1"
@@ -269,12 +270,24 @@ func generateIgnConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*ignv2_2
 
 	return &config, nil
 }
+
 func parseInterface(i k8sv1alpha1.Interface, contents map[string]string) {
-	if i.Mtu != 0 {
-		contents["mtu"] += fmt.Sprintf("ACTION==\"add\", SUBSYSTEM==\"net\", KERNEL==\"%s\", RUN+=\"/sbin/ip link set mtu %d dev '%%k'\"\n", i.Name, i.Mtu)
+	if i.Mtu != nil && *i.Mtu != 0 {
+		contents["mtu"] += fmt.Sprintf("ACTION==\"add\", SUBSYSTEM==\"net\", KERNEL==\"%s\", RUN+=\"/sbin/ip link set mtu %d dev '%%k'\"\n", i.Name, *i.Mtu)
 	}
-	if i.NumVfs >= 0 {
-		contents["sriov"] += (fmt.Sprintf("[device-%s]\n", i.Name) + fmt.Sprintf("match-device=interface-name:%v\nsriov-num-vfs=%v\n\n", i.Name, i.NumVfs))
+	if i.NumVfs != nil && *i.NumVfs >= 0 {
+		contents["sriov"] += (fmt.Sprintf("[device-%s]\n", i.Name) + fmt.Sprintf("match-device=interface-name:%v\nsriov-num-vfs=%v\n\n", i.Name, *i.NumVfs))
+	}
+	if i.Promisc != nil {
+		filename := "ifcfg-" + i.Name
+		contents[filename] += fmt.Sprintf("DEVICE=%s\n", i.Name)
+		contents[filename] += fmt.Sprintf("ONBOOT=%s\n", "yes")
+		contents[filename] += "NM_CONTROLLED=yes\n"
+		if *i.Promisc {
+			contents[filename] += fmt.Sprintf("PROMISC=%s\n", "yes")
+		} else {
+			contents[filename] += fmt.Sprintf("PROMISC=%s\n", "no")
+		}
 	}
 }
 
@@ -288,6 +301,7 @@ func getEncodedContent(inp string) string {
 func generateFiles(contents map[string]string) []ignv2_2types.File {
 	var files []ignv2_2types.File
 	fileMode := int(420)
+	r := regexp.MustCompile(`^ifcfg-.*`)
 
 	for k, v := range contents {
 		switch k {
@@ -317,6 +331,21 @@ func generateFiles(contents map[string]string) []ignv2_2types.File {
 					Mode: &fileMode,
 				},
 			})
+		default:
+			if r.MatchString(k) {
+				log.Info("file content", k, v)
+				files = append (files, ignv2_2types.File{
+					Node: ignv2_2types.Node{
+						Path: fmt.Sprintf("/etc/sysconfig/network-scripts/%s", k),
+					},
+					FileEmbedded1: ignv2_2types.FileEmbedded1{
+						Contents: ignv2_2types.FileContents{
+							Source: getEncodedContent(v),
+						},
+						Mode: &fileMode,
+					},
+				})
+			}
 		}
 	}
 

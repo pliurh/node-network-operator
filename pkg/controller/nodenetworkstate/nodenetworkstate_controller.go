@@ -2,18 +2,13 @@ package nodenetworkstate
 
 import (
 	"context"
-	"fmt"
-	"net/url"
-	"strings"
 
-	ignv2_2types "github.com/coreos/ignition/config/v2_2/types"
 	k8sv1alpha1 "github.com/pliurh/node-network-operator/pkg/apis/k8s/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"github.com/google/go-cmp/cmp"
-	"github.com/vincent-petithory/dataurl"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -133,55 +128,4 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func generateIgnConfig(nns *k8sv1alpha1.NodeNetworkState) (*ignv2_2types.Config, error) {
-
-	fileMode := int(420)
-	contents, err := generateNetConfigFileContent(nns)
-	if err != nil {
-		return nil, err
-	}
-
-	file := ignv2_2types.File{
-		Node: ignv2_2types.Node{
-			Path: "/etc/NetworkManager/conf.d/sriov.conf",
-		},
-		FileEmbedded1: ignv2_2types.FileEmbedded1{
-			Contents: ignv2_2types.FileContents{
-				Source: getEncodedContent(contents),
-			},
-			Mode: &fileMode,
-		},
-	}
-	config := ignv2_2types.Config{
-		Storage: ignv2_2types.Storage{
-			Files: []ignv2_2types.File{},
-		},
-	}
-	config.Storage.Files = append(config.Storage.Files, file)
-	return &config, nil
-}
-
-func getEncodedContent(inp string) string {
-	return (&url.URL{
-		Scheme: "data",
-		Opaque: "," + dataurl.Escape([]byte(inp)),
-	}).String()
-}
-
-func generateNetConfigFileContent(nns *k8sv1alpha1.NodeNetworkState) (string, error) {
-	var content strings.Builder
-	var i k8sv1alpha1.Interface
-
-	fmt.Fprintf(&content, "[devices]\n")
-
-	for _, i = range nns.Status.DesiredState.Interfaces {
-		if i.NumVfs > 0 {
-			fmt.Fprintf(&content, "match-device=interface-name:%v\nsriov-num-vfs=%v\n", i.Name, i.NumVfs)
-		}
-	}
-	// log.Printf("NetConfig file content is %s", content.String())
-	
-	return content.String(), nil
 }

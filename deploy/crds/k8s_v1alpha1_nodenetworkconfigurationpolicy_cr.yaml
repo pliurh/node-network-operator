@@ -6,9 +6,10 @@ metadata:
     machineconfiguration.openshift.io/role: worker
 spec:
   priority: 99
-  nodeSelector:
-    kubernetes.io/hostname: minikube
   desiredState:
     interfaces: 
     - name: eth0
+      numVfs: 2
+      mtu: 9000
+    - name: eth1
       numVfs: 2

@@ -25,7 +25,7 @@ func MergeNodeNetworkConfigurationPolicies(crs *NodeNetworkConfigurationPolicyLi
 		}
 	}
 
-	name := "nodenetconf-" + crs.Items[0].ObjectMeta.Labels[label]
+	name := "99-" + crs.Items[0].ObjectMeta.Labels[label] + "-nodenetconf"
 	return &NodeNetworkConfigurationPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,

@@ -276,7 +276,7 @@ func parseInterface(i k8sv1alpha1.Interface, contents map[string]string) {
 		contents["mtu"] += fmt.Sprintf("ACTION==\"add\", SUBSYSTEM==\"net\", KERNEL==\"%s\", RUN+=\"/sbin/ip link set mtu %d dev '%%k'\"\n", i.Name, *i.Mtu)
 	}
 	if i.NumVfs != nil && *i.NumVfs >= 0 {
-		contents["sriov"] += (fmt.Sprintf("[device-%s]\n", i.Name) + fmt.Sprintf("match-device=interface-name:%v\nsriov-num-vfs=%v\n\n", i.Name, *i.NumVfs))
+		contents["sriov"] += fmt.Sprintf("ACTION==\"add\", SUBSYSTEM==\"net\", KERNEL==\"%s\", ATTR{device/sriov_numvfs}=\"%d\"\n", i.Name, *i.NumVfs)
 	}
 	if i.Promisc != nil {
 		filename := "ifcfg-" + i.Name
@@ -306,7 +306,7 @@ func generateFiles(contents map[string]string) []ignv2_2types.File {
 	for k, v := range contents {
 		switch k {
 		case "mtu":
-			log.Info("file content", "mtu.conf", v)
+			log.Info("file content", "99-mtu.rules", v)
 			files = append (files, ignv2_2types.File{
 				Node: ignv2_2types.Node{
 					Path: "/etc/udev/rules.d/99-mtu.rules",
@@ -319,10 +319,10 @@ func generateFiles(contents map[string]string) []ignv2_2types.File {
 				},
 			})
 		case "sriov":
-			log.Info("file content", "sriov.conf", v)
+			log.Info("file content", "99-sriov.rules", v)
 			files = append (files, ignv2_2types.File{
 				Node: ignv2_2types.Node{
-					Path: "/etc/NetworkManager/conf.d/sriov.conf",
+					Path: "/etc/udev/rules.d/99-sriov.rules",
 				},
 				FileEmbedded1: ignv2_2types.FileEmbedded1{
 					Contents: ignv2_2types.FileContents{

@@ -1,4 +1,4 @@
-apiVersion: k8s.cni.cncf.io/v1alpha1
+apiVersion: nodenetwork.openshift.io/v1alpha1
 kind: NodeNetworkState
 metadata:
   name: minikube

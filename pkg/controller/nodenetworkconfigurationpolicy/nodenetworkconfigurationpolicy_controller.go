@@ -263,6 +263,9 @@ func generateIgnConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*ignv2_2
 	}
 
 	config := ignv2_2types.Config{
+		Ignition: ignv2_2types.Ignition{
+			Version: "2.2.0",
+		},
 		Storage: ignv2_2types.Storage{
 			Files: generateFiles(contents),
 		},

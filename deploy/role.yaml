@@ -40,7 +40,7 @@ rules:
   - get
   - create
 - apiGroups:
-  - k8s.cni.cncf.io
+  - nodenetwork.openshift.io
   resources:
   - '*'
   - nodenetworkconfigurationpolicies

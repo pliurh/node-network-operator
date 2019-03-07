@@ -309,6 +309,7 @@ func generateFiles(contents map[string]string) []ignv2_2types.File {
 			log.Info("file content", "99-mtu.rules", v)
 			files = append (files, ignv2_2types.File{
 				Node: ignv2_2types.Node{
+					Filesystem: "root",
 					Path: "/etc/udev/rules.d/99-mtu.rules",
 				},
 				FileEmbedded1: ignv2_2types.FileEmbedded1{
@@ -322,6 +323,7 @@ func generateFiles(contents map[string]string) []ignv2_2types.File {
 			log.Info("file content", "99-sriov.rules", v)
 			files = append (files, ignv2_2types.File{
 				Node: ignv2_2types.Node{
+					Filesystem: "root",
 					Path: "/etc/udev/rules.d/99-sriov.rules",
 				},
 				FileEmbedded1: ignv2_2types.FileEmbedded1{
@@ -336,6 +338,7 @@ func generateFiles(contents map[string]string) []ignv2_2types.File {
 				log.Info("file content", k, v)
 				files = append (files, ignv2_2types.File{
 					Node: ignv2_2types.Node{
+						Filesystem: "root",
 						Path: fmt.Sprintf("/etc/sysconfig/network-scripts/%s", k),
 					},
 					FileEmbedded1: ignv2_2types.FileEmbedded1{

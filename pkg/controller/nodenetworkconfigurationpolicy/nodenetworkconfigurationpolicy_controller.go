@@ -8,7 +8,7 @@ import (
 	"regexp"
 
 	ignv2_2types "github.com/coreos/ignition/config/v2_2/types"
-	k8sv1alpha1 "github.com/pliurh/node-network-operator/pkg/apis/k8s/v1alpha1"
+	nodenetwork "github.com/pliurh/node-network-operator/pkg/apis/nodenetwork/v1alpha1"
 	mcfgv1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
 
 	"github.com/vincent-petithory/dataurl"
@@ -53,16 +53,16 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource NodeNetworkConfigurationPolicy
-	err = c.Watch(&source.Kind{Type: &k8sv1alpha1.NodeNetworkConfigurationPolicy{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &nodenetwork.NodeNetworkConfigurationPolicy{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner NodeNetworkConfigurationPolicy
-	err = c.Watch(&source.Kind{Type: &k8sv1alpha1.NodeNetworkConfigurationPolicy{}}, &handler.EnqueueRequestForOwner{
+	err = c.Watch(&source.Kind{Type: &nodenetwork.NodeNetworkConfigurationPolicy{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &k8sv1alpha1.NodeNetworkConfigurationPolicy{},
+		OwnerType:    &nodenetwork.NodeNetworkConfigurationPolicy{},
 	})
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 	reqLogger.Info("Reconciling NodeNetworkConfigurationPolicy")
 
 	// Fetch the NodeNetworkConfigurationPolicy instance
-	instance := &k8sv1alpha1.NodeNetworkConfigurationPolicy{}
+	instance := &nodenetwork.NodeNetworkConfigurationPolicy{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -106,7 +106,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	k8sv1alpha1.ValidateNodeNetworkConfigurationPolicy(instance)
+	nodenetwork.ValidateNodeNetworkConfigurationPolicy(instance)
 
 	b := new(bytes.Buffer)
     for key, value := range instance.Labels {
@@ -115,7 +115,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 	reqLogger.Info("Instance","Labels", b.String())
 
 	// Fetch the NodeNetworkConfigurationPolicy instances with the same label.
-	policies := &k8sv1alpha1.NodeNetworkConfigurationPolicyList{}
+	policies := &nodenetwork.NodeNetworkConfigurationPolicyList{}
 	listOpts := &client.ListOptions{}
 	listOpts.SetLabelSelector(b.String())
 	err = r.client.List(context.TODO(), listOpts, policies)
@@ -129,7 +129,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	policy := k8sv1alpha1.MergeNodeNetworkConfigurationPolicies(policies)
+	policy := nodenetwork.MergeNodeNetworkConfigurationPolicies(policies)
 
 	// Render MachineConfig based on policies
 	machineConfig, err:= renderMachineConfig(policy)
@@ -178,18 +178,18 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 	return reconcile.Result{}, nil
 }
 
-func newNodeNetworkState(node *corev1.Node)*k8sv1alpha1.NodeNetworkState{
-	return &k8sv1alpha1.NodeNetworkState{
+func newNodeNetworkState(node *corev1.Node)*nodenetwork.NodeNetworkState{
+	return &nodenetwork.NodeNetworkState{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: node.Name,
 		},
-		Spec: k8sv1alpha1.NodeNetworkStateSpec{
+		Spec: nodenetwork.NodeNetworkStateSpec{
 			Managed: true,
 		},
 	}
 }
 
-func (r *ReconcileNodeNetworkConfigurationPolicy)updateNodeNetworkState(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) error{
+func (r *ReconcileNodeNetworkConfigurationPolicy)updateNodeNetworkState(cr *nodenetwork.NodeNetworkConfigurationPolicy) error{
 	listOpts := &client.ListOptions{}
 	nodes := &corev1.NodeList{}
 	err := r.client.List(context.TODO(), listOpts, nodes)
@@ -205,7 +205,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy)updateNodeNetworkState(cr *k8sv
 	}
 
 	for _, node := range nodes.Items {
-		cfg := &k8sv1alpha1.NodeNetworkState{}
+		cfg := &nodenetwork.NodeNetworkState{}
 		err = r.client.Get(context.TODO(), types.NamespacedName{Name: node.Name, Namespace: ""}, cfg)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -239,7 +239,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy)updateNodeNetworkState(cr *k8sv
 }
 
 // Render MachineConfig based on policies
-func renderMachineConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*mcfgv1.MachineConfig, error){	
+func renderMachineConfig(cr *nodenetwork.NodeNetworkConfigurationPolicy) (*mcfgv1.MachineConfig, error){	
 	config, err := generateIgnConfig(cr)
 	if err != nil {
 		return nil,err
@@ -256,7 +256,7 @@ func renderMachineConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*mcfgv
 	}, nil
 }
 
-func generateIgnConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*ignv2_2types.Config, error) {
+func generateIgnConfig(cr *nodenetwork.NodeNetworkConfigurationPolicy) (*ignv2_2types.Config, error) {
 	contents := make(map[string]string)
 	for _, iface := range cr.Spec.DesiredState.Interfaces {
 		parseInterface(iface, contents)
@@ -274,7 +274,7 @@ func generateIgnConfig(cr *k8sv1alpha1.NodeNetworkConfigurationPolicy) (*ignv2_2
 	return &config, nil
 }
 
-func parseInterface(i k8sv1alpha1.Interface, contents map[string]string) {
+func parseInterface(i nodenetwork.Interface, contents map[string]string) {
 	if i.Mtu != nil && *i.Mtu != 0 {
 		contents["mtu"] += fmt.Sprintf("ACTION==\"add\", SUBSYSTEM==\"net\", KERNEL==\"%s\", RUN+=\"/sbin/ip link set mtu %d dev '%%k'\"\n", i.Name, *i.Mtu)
 	}

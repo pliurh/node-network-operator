@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/pliurh/node-network-operator/pkg/apis/k8s/v1alpha1"
+	"github.com/pliurh/node-network-operator/pkg/apis/nodenetwork/v1alpha1"
 )
 
 func init() {

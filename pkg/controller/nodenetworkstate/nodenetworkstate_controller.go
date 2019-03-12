@@ -3,7 +3,7 @@ package nodenetworkstate
 import (
 	"context"
 
-	k8sv1alpha1 "github.com/pliurh/node-network-operator/pkg/apis/k8s/v1alpha1"
+	nodenetwork "github.com/pliurh/node-network-operator/pkg/apis/nodenetwork/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,7 +45,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource NodeNetworkState
-	err = c.Watch(&source.Kind{Type: &k8sv1alpha1.NodeNetworkState{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &nodenetwork.NodeNetworkState{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (r *ReconcileNodeNetworkState) Reconcile(request reconcile.Request) (reconc
 	reqLogger.Info("Reconciling NodeNetworkState")
 
 	// Fetch the NodeNetworkState instance
-	instance := &k8sv1alpha1.NodeNetworkState{}
+	instance := &nodenetwork.NodeNetworkState{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

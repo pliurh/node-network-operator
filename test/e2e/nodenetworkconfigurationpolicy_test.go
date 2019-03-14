@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	apis "github.com/pliurh/node-network-operator/pkg/apis"
-    nodenetwork "github.com/pliurh/node-network-operator/pkg/apis/nodenetwork/v1alpha1"
-    framework "github.com/operator-framework/operator-sdk/pkg/test"
+	nodenetwork "github.com/pliurh/node-network-operator/pkg/apis/nodenetwork/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
 var (
-	namespace = "node-network-operator"
+	namespace            = "node-network-operator"
 	retryInterval        = time.Second * 5
 	timeout              = time.Second * 120
 	cleanupRetryInterval = time.Second * 1
@@ -59,8 +60,8 @@ func NodeNetworkConfigurationPolicyVfnum(t *testing.T) {
 			DesiredState: nodenetwork.NodeCfgNetworkState{
 				Interfaces: []nodenetwork.Interface{
 					{
-						Name:     "eth2",
-						NumVfs:   &numVfs,
+						Name:   "eth2",
+						NumVfs: &numVfs,
 					},
 				},
 			},

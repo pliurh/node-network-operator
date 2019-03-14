@@ -12,6 +12,19 @@ type MatchCondition struct {
 	Name string `json:"name"`
 }
 
+// Interface defines the state of network interface
+type Interface struct {
+	Name    string `json:"name"`
+	NumVfs  *uint  `json:"numVfs,omitempty"`
+	Mtu     *uint  `json:"mtu,omitempty"`
+	Promisc *bool  `json:"promisc,omitempty"`
+}
+
+// NodeCfgNetworkState defines the configuration state of node network
+type NodeCfgNetworkState struct {
+	Interfaces []Interface `json:"interfaces"`
+}
+
 // NodeNetworkConfigurationPolicySpec defines the desired state of NodeNetworkConfigurationPolicy
 type NodeNetworkConfigurationPolicySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster

@@ -12,7 +12,6 @@ import (
 	nodenetwork "github.com/pliurh/node-network-operator/pkg/apis/nodenetwork/v1alpha1"
 
 	"github.com/vincent-petithory/dataurl"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -174,68 +173,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	err = r.updateNodeNetworkState(policy)
 	return reconcile.Result{}, nil
-}
-
-func newNodeNetworkState(node *corev1.Node) *nodenetwork.NodeNetworkState {
-	return &nodenetwork.NodeNetworkState{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: node.Name,
-		},
-		Spec: nodenetwork.NodeNetworkStateSpec{
-			Managed: true,
-		},
-	}
-}
-
-func (r *ReconcileNodeNetworkConfigurationPolicy) updateNodeNetworkState(cr *nodenetwork.NodeNetworkConfigurationPolicy) error {
-	listOpts := &client.ListOptions{}
-	nodes := &corev1.NodeList{}
-	err := r.client.List(context.TODO(), listOpts, nodes)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return nil
-		}
-		// Error reading the object - requeue the request.
-		return err
-	}
-
-	for _, node := range nodes.Items {
-		cfg := &nodenetwork.NodeNetworkState{}
-		err = r.client.Get(context.TODO(), types.NamespacedName{Name: node.Name, Namespace: ""}, cfg)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				// Request object not found, create it
-				log.Info("NodeNetworkState is not found, create it", "node", node.Name)
-				cfg := newNodeNetworkState(&node)
-				err = r.client.Create(context.TODO(), cfg)
-				if err != nil {
-					return err
-				}
-			} else {
-				// Error reading the object - requeue the request.
-				return err
-			}
-		}
-
-		// update node network desired config
-		err = r.client.Get(context.TODO(), types.NamespacedName{Name: node.Name, Namespace: ""}, cfg)
-		if err != nil {
-			return err
-		}
-		log.Info("Update node network config", "desired state", cr.Spec.DesiredState)
-		cfg.Status.DesiredState = *cr.Spec.DesiredState.DeepCopy()
-		err = r.client.Status().Update(context.TODO(), cfg)
-		if err != nil {
-			// Error reading the object - requeue the request.
-			return err
-		}
-	}
-	return nil
 }
 
 // Render MachineConfig based on policies

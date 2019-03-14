@@ -1,7 +1,0 @@
-apiVersion: nodenetwork.openshift.io/v1alpha1
-kind: NodeNetworkState
-metadata:
-  name: minikube
-spec:
-  managed: true
-  

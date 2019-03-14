@@ -18,7 +18,7 @@ load_manifest() {
     if ! oc get project node-network-operator > /dev/null 2>&1 && test -f namespace.yaml ; then
       oc apply -f namespace.yaml
     fi
-    files="service_account.yaml role.yaml role_binding.yaml operator.yaml crds/nodenetwork_v1alpha1_nodenetworkconfigurationpolicy_crd.yaml crds/nodenetwork_v1alpha1_nodenetworkstate_crd.yaml"
+    files="service_account.yaml role.yaml role_binding.yaml operator.yaml crds/nodenetwork_v1alpha1_nodenetworkconfigurationpolicy_crd.yaml"
     for m in ${files}; do
       if [ "$(echo ${EXCLUSIONS[@]} | grep -o ${m} | wc -w)" == "0" ] ; then
         oc apply -f ${m} ${namespace:-}

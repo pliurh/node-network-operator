@@ -95,8 +95,8 @@ deploy-setup:
 
 test-unit:
 	@go test -v $(PKGS)
-test-e2e:
-	hack/test-e2e.sh
+test-e2e: operator-sdk
+	@operator-sdk test local ./test/e2e
 
 # deploy-example-no-build: deploy-no-build
 # 	oc create -n $(NAMESPACE) -f hack/cr.yaml

@@ -15,7 +15,7 @@ load_manifest() {
   fi
 
   pushd ${repo}/deploy
-    if ! oc get project node-network-operator > /dev/null 2>&1 && test -f 01-namespace.yaml ; then
+    if ! oc get project node-network-operator > /dev/null 2>&1 && test -f namespace.yaml ; then
       oc apply -f namespace.yaml
     fi
     files="service_account.yaml role.yaml role_binding.yaml operator.yaml crds/nodenetwork_v1alpha1_nodenetworkconfigurationpolicy_crd.yaml crds/nodenetwork_v1alpha1_nodenetworkstate_crd.yaml"

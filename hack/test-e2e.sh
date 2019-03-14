@@ -11,21 +11,21 @@ fi
 
 repo_dir="$(dirname $0)/.."
 if ! oc get namespace node-network-operator > /dev/null 2>&1 ; then
-    oc create -f manifests/01-namespace.yaml
+    oc create -f deploy/namespace.yaml
 fi
 
 manifest=$(mktemp)
-files="02-service_account.yaml 03-role.yaml 04-role_binding.yaml 06-deployment.yaml"
-pushd manifests;
+files="service_account.yaml role.yaml role_binding.yaml operator.yaml"
+pushd deploy;
   for f in ${files}; do
      cat ${f} >> ${manifest};
   done;
 popd
 
 global_manifest=$(mktemp)
-global_files="05-crd.yaml"
+global_files="nodenetwork_v1alpha1_nodenetworkconfigurationpolicy_crd.yaml nodenetwork_v1alpha1_nodenetworkstate_crd.yaml"
 
-pushd manifests;
+pushd deploy/crds;
   for f in ${global_files}; do
     cat ${f} >> ${global_manifest}
   done;

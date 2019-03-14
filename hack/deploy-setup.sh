@@ -14,11 +14,12 @@ load_manifest() {
     namespace="-n ${namespace}"
   fi
 
-  pushd ${repo}/manifests
+  pushd ${repo}/deploy
     if ! oc get project node-network-operator > /dev/null 2>&1 && test -f 01-namespace.yaml ; then
-      oc apply -f 01-namespace.yaml
+      oc apply -f namespace.yaml
     fi
-    for m in $(ls); do
+    files="service_account.yaml role.yaml role_binding.yaml operator.yaml crds/nodenetwork_v1alpha1_nodenetworkconfigurationpolicy_crd.yaml crds/nodenetwork_v1alpha1_nodenetworkstate_crd.yaml"
+    for m in ${files}; do
       if [ "$(echo ${EXCLUSIONS[@]} | grep -o ${m} | wc -w)" == "0" ] ; then
         oc apply -f ${m} ${namespace:-}
       fi

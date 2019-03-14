@@ -9,15 +9,15 @@ import (
 
 // Interface defines the state of network interface
 type Interface struct {
-	Name    string    `json:"name"`
-	NumVfs  *uint      `json:"numVfs,omitempty"`
-	Mtu     *uint      `json:"mtu,omitempty"`
-	Promisc *bool      `json:"promisc,omitempty"`
+	Name    string `json:"name"`
+	NumVfs  *uint  `json:"numVfs,omitempty"`
+	Mtu     *uint  `json:"mtu,omitempty"`
+	Promisc *bool  `json:"promisc,omitempty"`
 }
 
 // NodeCfgNetworkState defines the configuration state of node network
 type NodeCfgNetworkState struct {
-	Interfaces []Interface       `json:"interfaces"`
+	Interfaces []Interface `json:"interfaces"`
 }
 
 // NodeOpNetworkState defines the operational state of node network configuration, which is a superset of configuration state
@@ -30,16 +30,16 @@ type NodeOpNetworkState struct {
 type NodeNetworkStateSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	Managed bool    `json:"managed"`
+	Managed bool `json:"managed"`
 }
 
 // NodeNetworkStateStatus defines the observed state of NodeNetworkState
 type NodeNetworkStateStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-//	NodeName         string               `json:"nodeName"`
-	DesiredState     NodeCfgNetworkState  `json:"desiredState"`
-	OperationalState NodeOpNetworkState   `json:"operationalState"`
+	//	NodeName         string               `json:"nodeName"`
+	DesiredState     NodeCfgNetworkState `json:"desiredState"`
+	OperationalState NodeOpNetworkState  `json:"operationalState"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

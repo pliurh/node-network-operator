@@ -9,6 +9,7 @@ import (
 )
 
 var log = logf.Log.WithName("v1alpha1_helper")
+
 const (
 	label = "machineconfiguration.openshift.io/role"
 )
@@ -28,7 +29,7 @@ func MergeNodeNetworkConfigurationPolicies(crs *NodeNetworkConfigurationPolicyLi
 	name := "99-" + crs.Items[0].ObjectMeta.Labels[label] + "-nodenetconf"
 	return &NodeNetworkConfigurationPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:   name,
 			Labels: crs.Items[0].ObjectMeta.Labels,
 		},
 		Spec: NodeNetworkConfigurationPolicySpec{
@@ -44,7 +45,7 @@ func ValidateNodeNetworkConfigurationPolicy(cr *NodeNetworkConfigurationPolicy) 
 		return fmt.Errorf("One label should be specified")
 	}
 
-	if val, ok := cr.Labels[label]; !ok{
+	if val, ok := cr.Labels[label]; !ok {
 		if val == "master" || val == "worker" {
 			return nil
 		}
@@ -53,7 +54,7 @@ func ValidateNodeNetworkConfigurationPolicy(cr *NodeNetworkConfigurationPolicy) 
 	return fmt.Errorf("Label can only be either \"master\" or \"worker\"")
 }
 
-func contains(ifaces []Interface, iface *Interface) bool{
+func contains(ifaces []Interface, iface *Interface) bool {
 	for _, i := range ifaces {
 		if i.Name == iface.Name {
 			return true

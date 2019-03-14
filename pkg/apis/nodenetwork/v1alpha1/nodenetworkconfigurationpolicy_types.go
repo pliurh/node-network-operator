@@ -9,16 +9,16 @@ import (
 
 // MatchCondition defines the interface match condition
 type MatchCondition struct {
-	Name string    `json:"name"`
+	Name string `json:"name"`
 }
 
 // NodeNetworkConfigurationPolicySpec defines the desired state of NodeNetworkConfigurationPolicy
 type NodeNetworkConfigurationPolicySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	Priority     uint                  `json:"priority"`
+	Priority uint `json:"priority"`
 	// desired state of node network configuration
-	DesiredState NodeCfgNetworkState   `json:"desiredState"`
+	DesiredState NodeCfgNetworkState `json:"desiredState"`
 }
 
 // NodeNetworkConfigurationPolicyStatus defines the observed state of NodeNetworkConfigurationPolicy

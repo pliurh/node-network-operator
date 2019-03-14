@@ -8,8 +8,8 @@ import (
 	"regexp"
 
 	ignv2_2types "github.com/coreos/ignition/config/v2_2/types"
-	nodenetwork "github.com/pliurh/node-network-operator/pkg/apis/nodenetwork/v1alpha1"
 	mcfgv1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
+	nodenetwork "github.com/pliurh/node-network-operator/pkg/apis/nodenetwork/v1alpha1"
 
 	"github.com/vincent-petithory/dataurl"
 	corev1 "k8s.io/api/core/v1"
@@ -109,10 +109,10 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 	nodenetwork.ValidateNodeNetworkConfigurationPolicy(instance)
 
 	b := new(bytes.Buffer)
-    for key, value := range instance.Labels {
-        fmt.Fprintf(b, "%s=%s", key, value)
-    }
-	reqLogger.Info("Instance","Labels", b.String())
+	for key, value := range instance.Labels {
+		fmt.Fprintf(b, "%s=%s", key, value)
+	}
+	reqLogger.Info("Instance", "Labels", b.String())
 
 	// Fetch the NodeNetworkConfigurationPolicy instances with the same label.
 	policies := &nodenetwork.NodeNetworkConfigurationPolicyList{}
@@ -132,7 +132,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 	policy := nodenetwork.MergeNodeNetworkConfigurationPolicies(policies)
 
 	// Render MachineConfig based on policies
-	machineConfig, err:= renderMachineConfig(policy)
+	machineConfig, err := renderMachineConfig(policy)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -178,7 +178,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy) Reconcile(request reconcile.Re
 	return reconcile.Result{}, nil
 }
 
-func newNodeNetworkState(node *corev1.Node)*nodenetwork.NodeNetworkState{
+func newNodeNetworkState(node *corev1.Node) *nodenetwork.NodeNetworkState {
 	return &nodenetwork.NodeNetworkState{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: node.Name,
@@ -189,7 +189,7 @@ func newNodeNetworkState(node *corev1.Node)*nodenetwork.NodeNetworkState{
 	}
 }
 
-func (r *ReconcileNodeNetworkConfigurationPolicy)updateNodeNetworkState(cr *nodenetwork.NodeNetworkConfigurationPolicy) error{
+func (r *ReconcileNodeNetworkConfigurationPolicy) updateNodeNetworkState(cr *nodenetwork.NodeNetworkConfigurationPolicy) error {
 	listOpts := &client.ListOptions{}
 	nodes := &corev1.NodeList{}
 	err := r.client.List(context.TODO(), listOpts, nodes)
@@ -221,7 +221,7 @@ func (r *ReconcileNodeNetworkConfigurationPolicy)updateNodeNetworkState(cr *node
 				return err
 			}
 		}
-		
+
 		// update node network desired config
 		err = r.client.Get(context.TODO(), types.NamespacedName{Name: node.Name, Namespace: ""}, cfg)
 		if err != nil {
@@ -239,15 +239,15 @@ func (r *ReconcileNodeNetworkConfigurationPolicy)updateNodeNetworkState(cr *node
 }
 
 // Render MachineConfig based on policies
-func renderMachineConfig(cr *nodenetwork.NodeNetworkConfigurationPolicy) (*mcfgv1.MachineConfig, error){	
+func renderMachineConfig(cr *nodenetwork.NodeNetworkConfigurationPolicy) (*mcfgv1.MachineConfig, error) {
 	config, err := generateIgnConfig(cr)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	return &mcfgv1.MachineConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: cr.Name,
+			Name:   cr.Name,
 			Labels: cr.ObjectMeta.Labels,
 		},
 		Spec: mcfgv1.MachineConfigSpec{
@@ -310,10 +310,10 @@ func generateFiles(contents map[string]string) []ignv2_2types.File {
 		switch k {
 		case "mtu":
 			log.Info("file content", "99-mtu.rules", v)
-			files = append (files, ignv2_2types.File{
+			files = append(files, ignv2_2types.File{
 				Node: ignv2_2types.Node{
 					Filesystem: "root",
-					Path: "/etc/udev/rules.d/99-mtu.rules",
+					Path:       "/etc/udev/rules.d/99-mtu.rules",
 				},
 				FileEmbedded1: ignv2_2types.FileEmbedded1{
 					Contents: ignv2_2types.FileContents{
@@ -324,10 +324,10 @@ func generateFiles(contents map[string]string) []ignv2_2types.File {
 			})
 		case "sriov":
 			log.Info("file content", "99-sriov.rules", v)
-			files = append (files, ignv2_2types.File{
+			files = append(files, ignv2_2types.File{
 				Node: ignv2_2types.Node{
 					Filesystem: "root",
-					Path: "/etc/udev/rules.d/99-sriov.rules",
+					Path:       "/etc/udev/rules.d/99-sriov.rules",
 				},
 				FileEmbedded1: ignv2_2types.FileEmbedded1{
 					Contents: ignv2_2types.FileContents{
@@ -339,10 +339,10 @@ func generateFiles(contents map[string]string) []ignv2_2types.File {
 		default:
 			if r.MatchString(k) {
 				log.Info("file content", k, v)
-				files = append (files, ignv2_2types.File{
+				files = append(files, ignv2_2types.File{
 					Node: ignv2_2types.Node{
 						Filesystem: "root",
-						Path: fmt.Sprintf("/etc/sysconfig/network-scripts/%s", k),
+						Path:       fmt.Sprintf("/etc/sysconfig/network-scripts/%s", k),
 					},
 					FileEmbedded1: ignv2_2types.FileEmbedded1{
 						Contents: ignv2_2types.FileContents{

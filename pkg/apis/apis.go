@@ -1,8 +1,8 @@
 package apis
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
 	mcfgv1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // AddToSchemes may be used to add all resources defined in the project to a Scheme

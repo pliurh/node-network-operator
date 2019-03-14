@@ -42,7 +42,7 @@ operator-sdk:
 	  fi ; \
 	  cd $(GOPATH)/src/github.com/operator-framework/operator-sdk ; \
 	  make dep ; \
-	  make install || sudo make install || cd commands/operator-sdk && sudo go install ; \
+	  make install ; \
 	fi
 
 imagebuilder:
@@ -57,7 +57,7 @@ build: fmt
 	@GOPATH=$(BUILD_GOPATH) $(GOBUILD) $(LDFLAGS) -o $(TARGET) $(MAIN_PKG)
 
 run:
-	@operator-sdk up local --kubeconfig=$KUBECONFIG
+	@operator-sdk up local --kubeconfig=$(KUBECONFIG)
 
 clean:
 	@rm -rf $(TARGET_DIR)
@@ -72,8 +72,8 @@ fmt:
 	gofmt -l -w pkg && \
 	gofmt -l -w test
 
-simplify:
-	@gofmt -s -l -w $(SRC)
+# simplify:
+# 	@gofmt -s -l -w $(SRC)
 
 gendeepcopy: operator-sdk
 	@operator-sdk generate k8s

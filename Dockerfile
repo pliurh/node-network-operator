@@ -4,7 +4,7 @@ COPY . .
 RUN make
 
 FROM registry.svc.ci.openshift.org/openshift/origin-v4.0:base
-ADD build/_output/bin/node-network-operator /usr/bin/node-network-operator
+COPY --from=builder /go/src/github.com/pliurh/node-network-operator/_output/bin/node-network-operator /usr/bin/
 WORKDIR /usr/bin
 ENTRYPOINT ["/usr/bin/node-network-operator"]
 LABEL io.k8s.display-name="OpenShift node-network-operator" \

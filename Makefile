@@ -56,7 +56,7 @@ build: fmt
 	@cp -ru $(CURPATH)/vendor/* $(TARGET_DIR)/src
 	@GOPATH=$(BUILD_GOPATH) $(GOBUILD) $(LDFLAGS) -o $(TARGET) $(MAIN_PKG)
 
-run: operator-sdk
+run:
 	@operator-sdk up local --kubeconfig=$(KUBECONFIG)
 
 clean:

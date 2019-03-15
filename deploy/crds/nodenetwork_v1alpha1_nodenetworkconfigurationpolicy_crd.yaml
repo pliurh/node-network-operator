@@ -12,4 +12,32 @@ spec:
     singular: nodenetworkconfigurationpolicy
   scope: Cluster
   version: v1alpha1
-
+  validation:
+   # openAPIV3Schema is the schema for validating custom objects.
+    openAPIV3Schema:
+      required: ["spec"]
+      properties:
+        spec:
+          required: ["priority", "desiredState"]
+          properties:
+            priority:
+              type: integer
+              minimum: 0
+              maximum: 99
+            desiredState:
+              required: ["interfaces"]
+              properties:
+                interfaces:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                    - name
+                    properties:
+                      name:
+                        type: string
+                        pattern: "^(.*)$"
+                      numVfs:
+                        type: integer
+                      mtu:
+                        type: integer

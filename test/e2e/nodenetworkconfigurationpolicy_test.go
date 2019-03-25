@@ -35,7 +35,8 @@ func TestNodeNetworkConfigurationPolicy(t *testing.T) {
 	t.Run("NodeNetworkConfigurationPolicy-group", func(t *testing.T) {
 
 		t.Run("Node network with SR-IOV", NodeNetworkConfigurationPolicyVfnum)
-		// time.Sleep(time.Minute * 1) // wait for objects to be deleted/cleaned up
+		time.Sleep(time.Minute * 1) // wait for objects to be deleted/cleaned up
+		t.Run("Node network with MTU", NodeNetworkConfigurationPolicyMtu)
 	})
 }
 
@@ -76,6 +77,48 @@ func NodeNetworkConfigurationPolicyVfnum(t *testing.T) {
 	}
 
 	err = WaitForMachineConfig(t, f.Client, "/etc/udev/rules.d/99-sriov.rules", retryInterval, timeout)
+	if err != nil {
+		return
+	}
+}
+
+func NodeNetworkConfigurationPolicyMtu(t *testing.T) {
+	t.Parallel()
+	ctx := framework.NewTestCtx(t)
+	defer ctx.Cleanup()
+	mtu := uint(1200)
+
+	// create NodeNetworkConfigurationPolicy custom resource
+	policy := &nodenetwork.NodeNetworkConfigurationPolicy{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "NodeNetworkConfigurationPolicy",
+			APIVersion: nodenetwork.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-policy",
+			Namespace: namespace,
+		},
+		Spec: nodenetwork.NodeNetworkConfigurationPolicySpec{
+			Priority: 99,
+			DesiredState: nodenetwork.NodeCfgNetworkState{
+				Interfaces: []nodenetwork.Interface{
+					{
+						Name: "eth2",
+						Mtu:  &mtu,
+					},
+				},
+			},
+		},
+	}
+
+	// get global framework variables
+	f := framework.Global
+	err := f.Client.Create(goctx.TODO(), policy, &framework.CleanupOptions{TestContext: ctx, Timeout: time.Second * 5, RetryInterval: time.Second * 1})
+	if err != nil {
+		return
+	}
+
+	err = WaitForMachineConfig(t, f.Client, "/etc/udev/rules.d/99-mtu.rules", retryInterval, timeout)
 	if err != nil {
 		return
 	}

@@ -17,3 +17,30 @@ rules:
   - machineconfigs
   verbs:
   - '*'
+
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: node-network-operator
+  namespace: node-network-operator
+rules:
+- apiGroups:
+    - ""
+  resources:
+    - pods
+    - events
+    - configmaps
+    - secrets
+    - services
+    - endpoints
+    - serviceaccounts
+  verbs:
+    - '*'
+- apiGroups:
+    - apps
+  resources:
+    - deployments
+  verbs:
+    - '*'
